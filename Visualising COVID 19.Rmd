@@ -1,0 +1,302 @@
+---
+title: "Visualising COVID-19"
+author: "JUSTIN LO"
+date: "2023-12-09"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r,echo=FALSE, message=FALSE}
+library(readr)
+library(ggplot2)
+library(dplyr)
+```
+
+Reading in the dataset of worldwide confirmed cases and confirmed cases of china and non china countries and assigning it to a variable
+```{r, echo=FALSE}
+confirmed_cases_worldwide<- read_csv("confirmed_cases_worldwide.csv")
+head(confirmed_cases_worldwide)
+
+confirmed_cases_china_vs_world <- read_csv("confirmed_cases_china_vs_world.csv")
+head(confirmed_cases_china_vs_world)
+```
+
+
+Visualization of confirmed cases trend and confirmed cases of china and non china countries
+```{r, out.width='80%'}
+plt_cum_confirmed_cases_worldwide<-ggplot(data = confirmed_cases_worldwide, aes(x=date, y=cum_cases))+geom_line()+ylab("Cumulative confirmed cases")+ ggtitle("Covid cases worldwide")
+plt_cum_confirmed_cases_worldwide
+
+plt_cum_confirmed_cases_china_vs_world <- ggplot(data=confirmed_cases_china_vs_world, aes(x= date, y= cum_cases, color = is_china)) +
+  geom_line() +
+  ylab("Cumulative confirmed cases") +
+  ggtitle("Covid cases sepearted by China and non china countries")
+plt_cum_confirmed_cases_china_vs_world
+```
+
+
+
+It was then realised that the huge jump in the China line on February 13, 2020 wasn't just a bad day regarding the outbreak; China changed the way it reported figures on that day (CT scans were accepted as evidence for COVID-19, rather than only lab tests).
+
+To reflect this on the plot, we can add x-intercepts and labels to the plot
+```{r}
+who_events <- tribble(
+  ~ date, ~ event,
+  "2020-01-30", "Global health\nemergency\ndeclared",
+  "2020-03-11", "Pandemic\ndeclared",
+  "2020-02-13", "China reporting\nchanged"
+) %>%
+  mutate(date = as.Date(date))
+
+plt_cum_confirmed_cases_china_vs_world_2<-plt_cum_confirmed_cases_china_vs_world +
+  geom_vline(aes(xintercept = date), data = who_events, linetype = "dashed") +
+  geom_label(aes(date, label = event), data = who_events, y = 1e5, color="black")
+plt_cum_confirmed_cases_china_vs_world_2
+```
+
+
+Now, to investigate china's confirmed cases after feb15. 
+I have created a line plot showing the data of china's confirmed cases after feb 15.
+```{r}
+china_after_feb15<- confirmed_cases_china_vs_world %>% 
+  filter(is_china=="China", date>="2020-02-15")
+head(china_after_feb15)
+
+plt_cum_confirmed_cases_china_after_feb15<-ggplot(data= china_after_feb15, aes(x=date, y=cum_cases))+geom_line()+ylab("cumulative confirmed cases")+ggtitle("Covid cases in China")
+plt_cum_confirmed_cases_china_after_feb15
+```
+
+
+To create the same plots but for non-china countries
+```{r}
+no_china<- confirmed_cases_china_vs_world %>% 
+  filter(is_china!="China")
+
+yes_china<- confirmed_cases_china_vs_world %>% 
+  filter(is_china=="China")
+
+plt_not_china_trend_line<- ggplot(data = no_china, aes(x=date, y=cum_cases)) + geom_line() +ylab("cumulative confirmed cases")+ggtitle("Covid Cases in non-china countries")
+plt_not_china_trend_line
+
+```
+
+
+Import data on covid cases by country with China excluded. 
+Then, calculate which country has had the highest cumulative cases
+```{r}
+confirmed_cases_by_country<- read_csv("confirmed_cases_by_country.csv")
+head(confirmed_cases_by_country)
+
+top_countries_by_total_cases<-confirmed_cases_by_country %>% 
+  group_by(country) %>% 
+  summarize(total_cases = max(cum_cases)) %>%
+  top_n(7, total_cases)
+
+top_countries_by_total_cases
+```
+
+
+To create line plots of cumulative confirmed cases by country
+```{r}
+confirmed_cases_top7_outside_china <- read.csv("confirmed_cases_top7_outside_china.csv")
+head(confirmed_cases_top7_outside_china)
+plt_cum_confirmed_cases_by_country<-ggplot(confirmed_cases_top7_outside_china, aes(date, cum_cases, color = country)) +
+  geom_line() +
+  ylab("Cumulative confirmed cases")+
+  ggtitle("Covid cases by country")
+plt_cum_confirmed_cases_by_country
+```
+
+
+plots i want to show 
+```{r}
+plt_cum_confirmed_cases_worldwide<-ggplot(data = confirmed_cases_worldwide, aes(x=date, y=cum_cases))+geom_line()+ylab("Cumulative confirmed cases")+ ggtitle("Covid cases worldwide")
+plt_cum_confirmed_cases_worldwide
+
+plt_cum_confirmed_cases_china_vs_world <- ggplot(data=confirmed_cases_china_vs_world, aes(x= date, y= cum_cases, color = is_china)) +
+  geom_line() +
+  ylab("Cumulative confirmed cases") +
+  ggtitle("Covid cases sepearted by China and non china countries")
+plt_cum_confirmed_cases_china_vs_world
+
+plt_not_china_trend_line<- ggplot(data = no_china, aes(x=date, y=cum_cases)) + geom_line() +ylab("cumulative confirmed cases")+ggtitle("Covid Cases in non-china countries")
+plt_not_china_trend_line
+
+plt_yes_china_trend_line<- ggplot(data = yes_china, aes(x=date, y=cum_cases)) + geom_line() +ylab("cumulative confirmed cases")+ggtitle("Covid Cases in china")+ylim(c(0,125000))
+plt_yes_china_trend_line
+```
+Same plots with legend
+```{r}
+who_events <- tribble(
+  ~ date, ~ event,
+  "2020-01-30", "Global health\nemergency\ndeclared",
+  "2020-03-11", "Pandemic\ndeclared",
+  "2020-02-13", "China reporting\nchanged"
+) %>%
+  mutate(date = as.Date(date))
+
+plt_cum_confirmed_cases_worldwide_legend<-ggplot(data = confirmed_cases_worldwide, aes(x=date, y=cum_cases))+geom_line()+ylab("Cumulative confirmed cases")+ ggtitle("Covid cases worldwide")+
+  geom_vline(aes(xintercept = date), data = who_events, linetype = "dashed")+ geom_label(aes(date, label = event), data = who_events, y = 1e5, color="black")
+plt_cum_confirmed_cases_worldwide_legend
+
+plt_cum_confirmed_cases_china_vs_world_legend<-plt_cum_confirmed_cases_china_vs_world +
+  geom_vline(aes(xintercept = date), data = who_events, linetype = "dashed") +
+  geom_label(aes(date, label = event), data = who_events, y = 1e5, color="black")
+plt_cum_confirmed_cases_china_vs_world_legend
+
+plt_not_china_trend_line_legend<- ggplot(data = no_china, aes(x=date, y=cum_cases)) + geom_line() +ylab("cumulative confirmed cases")+ggtitle("Covid Cases in non-china countries")+
+  geom_vline(aes(xintercept = date), data = who_events, linetype = "dashed") +
+  geom_label(aes(date, label = event), data = who_events, y = 1e5, color="black")
+plt_not_china_trend_line_legend
+
+plt_yes_china_trend_line_legend<- ggplot(data = yes_china, aes(x=date, y=cum_cases)) + geom_line() +ylab("cumulative confirmed cases")+ggtitle("Covid Cases in china")+ylim(c(0,125000))+
+  geom_vline(aes(xintercept = date), data = who_events, linetype = "dashed") +
+  geom_label(aes(date, label = event), data = who_events, y = 1e5, color="black")
+plt_yes_china_trend_line_legend
+```
+
+Shiny 1
+```{r}
+library(shiny)
+library(shinydashboard)
+
+ui_1 <- fluidPage(
+    titlePanel("COVID-19 Data Visualization"),
+    tabsetPanel(
+        tabPanel("Worldwide Cases", plotOutput("worldCasesPlot")),
+        tabPanel("China vs Non-China", plotOutput("chinaVsNonChinaPlot")),
+        tabPanel("China Only", plotOutput("chinaOnlyPlot")),
+        tabPanel("Non-China Countries", plotOutput("nonChinaPlot"))
+    )
+)
+
+server_1 <- function(input, output) {
+
+    output$worldCasesPlot <- renderPlot({
+        plt_cum_confirmed_cases_worldwide 
+    })
+
+    output$chinaVsNonChinaPlot <- renderPlot({
+        plt_cum_confirmed_cases_china_vs_world
+    })
+
+    output$chinaOnlyPlot <- renderPlot({
+        plt_not_china_trend_line
+    })
+
+    output$nonChinaPlot <- renderPlot({
+        plt_yes_china_trend_line
+    })
+
+}
+
+shinyApp(ui = ui_1, server = server_1)
+```
+Shiny 2
+```{r}
+ui_2 <- fluidPage(
+    titlePanel("COVID-19 Data Visualization"),
+
+    sidebarLayout(
+        sidebarPanel(
+            selectInput("selectedPlot",
+                        "Choose a Plot:",
+                        choices = c("Worldwide Cases" = "world",
+                                    "China Only" = "chinaOnly",
+                                    "Non-China Countries" = "nonChina",
+                                    "China vs Non-China" = "chinaVsNonChina"
+                                    ))
+        ),
+        mainPanel(
+            plotOutput("plotOutput")
+        )
+    )
+)
+
+server_2 <- function(input, output) {
+
+    output$plotOutput <- renderPlot({
+        if (input$selectedPlot == "world") {
+            plt_cum_confirmed_cases_worldwide
+        } else if (input$selectedPlot == "chinaVsNonChina") {
+            plt_cum_confirmed_cases_china_vs_world
+        } else if (input$selectedPlot == "chinaOnly") {
+            plt_not_china_trend_line
+        } else if (input$selectedPlot == "nonChina") {
+            plt_yes_china_trend_line
+        }
+    })
+
+}
+
+shinyApp(ui = ui_2, server = server_2)
+```
+Shiny 3
+
+```{r}
+ui_3 <- fluidPage(
+ titlePanel("COVID-19 Data Visualization"),
+ 
+ fluidRow(
+        column(12,
+               wellPanel(
+                   p("This dashboard presents a series of plots depicting the spread of COVID-19 globally and by country wise. Explore trends in case numbers across different regions and time periods. Use the dropdown menu and checkbox to customize the views.")
+               )
+        )
+    ),
+ 
+    sidebarLayout(
+        sidebarPanel(
+            selectInput("selectedPlot",
+                        "Choose a Plot:",
+                        choices = c("Worldwide Cases" = "world",
+                                    "China Only" = "chinaOnly",
+                                    "Non-China Countries" = "nonChina",
+                                    "China vs Non-China" = "chinaVsNonChina")),
+            checkboxInput("showLegend", "Show important dates", value = FALSE)
+        ),
+        mainPanel(
+            plotOutput("plotOutput"),
+            uiOutput("plotDescription") 
+            
+        )
+      )
+    )
+
+server_3 <- function(input, output) {
+  
+     output$plotDescription <- renderUI({
+        switch(input$selectedPlot,
+               "world" = HTML("Description for Worldwide Cases plot."),
+               "chinaVsNonChina" = HTML("Description for China vs Non-China plot."),
+               "chinaOnly" = HTML("Description for China Only plot."),
+               "nonChina" = HTML("Description for Non-China Countries plot."))
+    })
+
+    output$plotOutput <- renderPlot({
+        if (input$showLegend) {
+            switch(input$selectedPlot,
+                   "world" = plt_cum_confirmed_cases_worldwide_legend,
+                   "chinaVsNonChina" = plt_cum_confirmed_cases_china_vs_world_legend,
+                   "chinaOnly" = plt_not_china_trend_line_legend,
+                   "nonChina" = plt_yes_china_trend_line_legend)
+        } else {
+            switch(input$selectedPlot,
+                   "world" = plt_cum_confirmed_cases_worldwide,
+                   "chinaVsNonChina" = plt_cum_confirmed_cases_china_vs_world,
+                   "chinaOnly" = plt_not_china_trend_line,
+                   "nonChina" = plt_yes_china_trend_line)
+        }
+    })
+
+}
+
+shinyApp(ui = ui_3, server = server_3)
+```
+Now, to expand the project so that it includes different countries detailed accumulated cases.  
+```{r}
+```
+
